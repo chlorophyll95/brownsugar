@@ -308,6 +308,10 @@ controller.hears('order', ['direct_mention', 'mention', 'direct_message'], funct
 	}
 });
 
+controller.hears('start', ['message_received'], function (bot, message) {
+    bot.reply(message, message.user.name + " started the order");
+});
+
 controller.on('slash_command', function (bot, message) {
 	bot.replyAcknowledge()
 	switch (message.command) {
