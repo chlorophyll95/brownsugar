@@ -270,9 +270,11 @@ controller.hears('order', ['direct_mention', 'mention', 'direct_message'], funct
 			var timeString = hours + ":" + minutes;
 			var h = (hours % 12) || 12;
 			var ampm = hours < 12 ? "AM" : "PM";
-			timeString = h + ":" + timeString.substr(2, 3) + ampm;
+            timeString = h + ":" + timeString.substr(2, 3) + ampm;
+            console.log(timeString);
 
-			bot.reply(message, "<!channel> We will be ordering from " + bubbleTeaShop + ". Put in your order now! Cut off time: " + timeString);
+            bot.reply(message, "<!channel> We will be ordering from " + bubbleTeaShop + ". Put in your order now! Cut off time: " + timeString);
+            orderTimeSet(moment().add(1, 'hours').toDate());
 			fs.readFile('credentials.json', (err, content) => {
 				if (err) return console.log('Error loading client secret file:', err);
 				// Authorize a client with credentials, then call the Google Sheets API.
@@ -330,24 +332,10 @@ controller.hears('bye', ['direct_mention', 'mention', 'direct_message'], functio
     bot.reply(message, 'test' + ' this is a response.');
 });
 
-controller.hears('orderTest', 'direct_message', function (bot, message) {
-    console.log('order testing!')
-    orderTimeSet(new Date(2019, 03, 12, 00, 00, 0));
-})
-
 function orderTimeSet(orderTime) {
-    console.log("&&&&");
-    console.log(orderTime)
-    console.log("&&&&");
     const fiveMinutesToOrder = moment(orderTime).subtract(5, 'minutes').toDate();
     const fifteenMinutesToOrder = moment(orderTime).subtract(15, 'minutes').toDate();
     const thirtyMinutesToOrder = moment(orderTime).subtract(30, 'minutes').toDate();
-
-    console.log("%%%%%%%%%%%");
-    console.log(fiveMinutesToOrder);
-    console.log(fifteenMinutesToOrder);
-    console.log(thirtyMinutesToOrder);
-    console.log("%%%%%%%%%%%");
 
     sendOrderNotifications(orderTime, 0)
     sendOrderNotifications(fiveMinutesToOrder, 5);
@@ -356,9 +344,6 @@ function orderTimeSet(orderTime) {
 }
 
 function sendOrderNotifications(NTime, minutesToOrder) {
-    console.log("^^^^^");
-    console.log(NTime);
-    console.log("^^^^^");
     let notificationText = (minutesToOrder === 0 ? `Orders are due now! Get them in ASAP!` : `Order is due in ${minutesToOrder} minutes!`);
     let notification = schedule.scheduleJob(NTime, () => {
         axios.post('https://hooks.slack.com/services/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', {
