@@ -1,13 +1,9 @@
-let botkit = require('botkit');
-const moment = require('moment');
-const axios = require('axios');
-const schedule = require('node-schedule');
-let newSheetTitle = "New";
-require('dotenv').config();
-
+const botkit = require('botkit');
+const newSheetTitle = "New";
 const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
+require('dotenv').config();
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
@@ -214,10 +210,10 @@ controller.configureSlackApp({
 	scopes: ['commands', 'bot'],
 });
 
-controller.setupWebserver(process.env.PORT, function (err, webserver) {
+controller.setupWebserver(process.env.PORT, (err, webserver) => {
 	controller.createWebhookEndpoints(controller.webserver);
 	controller.createOauthEndpoints(controller.webserver,
-		function (err, req, res) {
+		(err, req, res) => {
 			if (err) {
 				res.status(500).send('ERROR: ' + err);
 			} else {
@@ -233,14 +229,10 @@ let bot = controller.spawn({
 	}
 }).startRTM();
 
-controller.hears('hi', 'direct_message', function (bot, message) {
-	bot.reply(message, 'Hello.');
-});
-
-controller.hears('start', ['direct_mention', 'mention', 'direct_message'], function (bot, message) {
+controller.hears('start', ['direct_mention', 'mention', 'direct_message'], (bot, message) => {
 	var currentUser;
 	bot.reply(message, "<@" + message.user+ "> started the order.");
-	bot.api.users.info({user: message.user},function(err,response) {
+	bot.api.users.info({user: message.user}, (err,response) => {
 		if(err) {
 			bot.say("ERROR :(");
 		}
@@ -259,14 +251,20 @@ controller.hears('start', ['direct_mention', 'mention', 'direct_message'], funct
 	});
 });
 
-controller.hears('order', ['direct_mention', 'mention', 'direct_message'], function (bot, message) {
+controller.hears('order', ['direct_mention', 'mention', 'direct_message'], (bot, message) => {
 	bubbleTeaShop = message.text.split(" ")[2];
 	if (bubbleTeaShop !== undefined) {
 		if (bubbleTeaShop.length > 0) {
-            let orderTime = moment().add(1, 'hours').toDate();
-            let timeForMessage = moment(orderTime).format('LT');
-            bot.reply(message, `<!channel> We will be ordering from ${bubbleTeaShop}. Put in your order now! Cut off time: ${timeForMessage}`);
-            orderTimeSet(orderTime);
+			let hours = new Date().getHours() + 1;
+
+			let minutes = new Date().getMinutes();
+			hours = (hours === 24) ? 00 : hours;
+			var timeString = hours + ":" + minutes;
+			var h = (hours % 12) || 12;
+			var ampm = hours < 12 ? "AM" : "PM";
+			timeString = h + ":" + timeString.substr(2, 3) + ampm;
+
+			bot.reply(message, "<!channel> We will be ordering from " + bubbleTeaShop + ". Put in your order now! Cut off time: " + timeString);
 			fs.readFile('credentials.json', (err, content) => {
 				if (err) return console.log('Error loading client secret file:', err);
 				// Authorize a client with credentials, then call the Google Sheets API.
@@ -305,45 +303,6 @@ controller.hears('order', ['direct_mention', 'mention', 'direct_message'], funct
 	}
 });
 
-controller.hears('yoyoyo', 'direct_message', function (bot, message) {
-    bot.reply(message, "CHAD" + " started the order");
+controller.hears('start', ['message_received'], (bot, message) => {
+    bot.reply(message, message.user.name + " started the order");
 });
-
-controller.on('slash_command', function (bot, message) {
-	bot.replyAcknowledge()
-	switch (message.command) {
-		case '/echo':
-			bot.reply(message, 'heard ya!')
-			break;
-		default:
-			bot.reply(message, 'Did not recognize that command, sorry!')
-	}
-});
-
-controller.hears('bye', ['direct_mention', 'mention', 'direct_message'], function (bot, message) {
-    bot.reply(message, 'test' + ' this is a response.');
-});
-
-function orderTimeSet(orderTime) {
-    const fiveMinutesToOrder = moment(orderTime).subtract(5, 'minutes').toDate();
-    const fifteenMinutesToOrder = moment(orderTime).subtract(15, 'minutes').toDate();
-    const thirtyMinutesToOrder = moment(orderTime).subtract(30, 'minutes').toDate();
-
-    sendOrderNotifications(orderTime, 0)
-    sendOrderNotifications(fiveMinutesToOrder, 5);
-    sendOrderNotifications(fifteenMinutesToOrder, 15);
-    sendOrderNotifications(thirtyMinutesToOrder, 30);
-}
-
-function sendOrderNotifications(NTime, minutesToOrder) {
-    let notificationText = (minutesToOrder === 0 ? `Orders are due now! Get them in ASAP!` : `Order is due in ${minutesToOrder} minutes!`);
-    let notification = schedule.scheduleJob(NTime, () => {
-        axios.post('https://hooks.slack.com/services/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', {
-            text: notificationText,
-        }).then((res) => {
-            console.log(`statusCode: ${res.statusCode}`);
-        }).catch((error) => {
-            console.log(error);
-        });
-    })
-}
