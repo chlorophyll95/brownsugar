@@ -194,6 +194,51 @@ function orderFrom(auth, bubbleTeaShop, cutOffTime) {
 	});
 }
 
+function orderTimeSet(orderTime) {
+    const fiveMinutesToOrder = moment(orderTime).subtract(5, 'minutes').toDate();
+    const fifteenMinutesToOrder = moment(orderTime).subtract(15, 'minutes').toDate();
+    const thirtyMinutesToOrder = moment(orderTime).subtract(30, 'minutes').toDate();
+
+    sendOrderNotifications(orderTime, 0)
+    sendOrderNotifications(fiveMinutesToOrder, 5);
+    sendOrderNotifications(fifteenMinutesToOrder, 15);
+    sendOrderNotifications(thirtyMinutesToOrder, 30);
+}
+
+function sendOrderNotifications(NTime, minutesToOrder) {
+    let notificationText = (minutesToOrder === 0 ? `Orders are due now! Get them in ASAP!` : `Order is due in ${minutesToOrder} minutes!`);
+    let notification = schedule.scheduleJob(NTime, () => {
+        axios.post('https://hooks.slack.com/services/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', {
+            text: notificationText,
+        }).then((res) => {
+            console.log(`statusCode: ${res.statusCode}`);
+        }).catch((error) => {
+            console.log(error);
+        });
+    })
+}
+
+function getOrdersFromSpreadsheet() {
+    console.log('In get orders from spreadsheet function')
+    const sheets = google.sheets({version: 'v4', auth});
+
+    sheets.spreadsheets.values.get({
+        spreadsheetId: '1MyLFCPcvY6BBgICQ2XjPvaUgyQJqMu_v-5knB4xdBP8',
+		range: `${newSheetTitle}!F22:F`,
+		majorDimension: 'ROWS',
+		valueRenderOption: 'FORMATTED_VALUE',
+		fields: 'values',
+    }).then((res) => {
+        console.log('Success!!!!!!!!!!!');
+    }).catch((err) => {
+        console.log(err);
+    })
+}
+
+function notifyOrderers() {
+
+}
+
 if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.PORT || !process.env.VERIFICATION_TOKEN) {
 	console.log('Error: Specify CLIENT_ID, CLIENT_SECRET, VERIFICATION_TOKEN and PORT in environment');
 	process.exit(1);
@@ -232,10 +277,6 @@ let bot = controller.spawn({
 		url: 'WE_WILL_GET_TO_THIS'
 	}
 }).startRTM();
-
-controller.hears('hi', 'direct_message', function (bot, message) {
-	bot.reply(message, 'Hello.');
-});
 
 controller.hears('start', ['direct_mention', 'mention', 'direct_message'], function (bot, message) {
 	var currentUser;
@@ -305,45 +346,12 @@ controller.hears('order', ['direct_mention', 'mention', 'direct_message'], funct
 	}
 });
 
-controller.hears('yoyoyo', 'direct_message', function (bot, message) {
-    bot.reply(message, "CHAD" + " started the order");
-});
+controller.hears('done', ['direct_mention', 'mention', 'direct_message'], (bot, message) => {
+    fs.readFile('credentials.json', (err, content) => {
+        if (err) return console.log('Error loading client secret file:', err);
+        // Authorize a client with credentials, then call the Google Sheets API.
+        authorize(JSON.parse(content), getOrdersFromSpreadsheet);
+    });
+})
 
-controller.on('slash_command', function (bot, message) {
-	bot.replyAcknowledge()
-	switch (message.command) {
-		case '/echo':
-			bot.reply(message, 'heard ya!')
-			break;
-		default:
-			bot.reply(message, 'Did not recognize that command, sorry!')
-	}
-});
 
-controller.hears('bye', ['direct_mention', 'mention', 'direct_message'], function (bot, message) {
-    bot.reply(message, 'test' + ' this is a response.');
-});
-
-function orderTimeSet(orderTime) {
-    const fiveMinutesToOrder = moment(orderTime).subtract(5, 'minutes').toDate();
-    const fifteenMinutesToOrder = moment(orderTime).subtract(15, 'minutes').toDate();
-    const thirtyMinutesToOrder = moment(orderTime).subtract(30, 'minutes').toDate();
-
-    sendOrderNotifications(orderTime, 0)
-    sendOrderNotifications(fiveMinutesToOrder, 5);
-    sendOrderNotifications(fifteenMinutesToOrder, 15);
-    sendOrderNotifications(thirtyMinutesToOrder, 30);
-}
-
-function sendOrderNotifications(NTime, minutesToOrder) {
-    let notificationText = (minutesToOrder === 0 ? `Orders are due now! Get them in ASAP!` : `Order is due in ${minutesToOrder} minutes!`);
-    let notification = schedule.scheduleJob(NTime, () => {
-        axios.post('https://hooks.slack.com/services/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', {
-            text: notificationText,
-        }).then((res) => {
-            console.log(`statusCode: ${res.statusCode}`);
-        }).catch((error) => {
-            console.log(error);
-        });
-    })
-}
