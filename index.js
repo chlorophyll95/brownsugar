@@ -2,12 +2,57 @@ let botkit = require('botkit');
 const moment = require('moment');
 const axios = require('axios');
 const schedule = require('node-schedule');
+var request = require('request');
+var express = require('express');
+var bodyParser = require('body-parser');
 let newSheetTitle = "New";
 require('dotenv').config();
+var app = express();
+console.log(app);
+
+const PORT = 5000;
+
+app.listen(PORT, () => {
+  console.log(`server running on port ${PORT}`)
+});
+
+var urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
+
+app.post('/interactions', urlencodedParser, (req, res) => {
+	res.status(200).end() // best practice to respond with 200 status
+	var actionJSONPayload = JSON.parse(req.body.payload) // parse URL-encoded payload JSON string
+
+	console.log(req);
+
+	var directMessage = {
+		user: actionJSONPayload.user,
+		as_user: true,
+		text: (actionJSONPayload.actions[0].value === "yes") ? "What would you like to order from " + bubbleTeaShop + "?" : "That's cool! Join us next time!",
+		replace_original: false
+	}
+	sendMessageToSlackResponseURL(actionJSONPayload.response_url, directMessage)
+
+});
+
+function sendMessageToSlackResponseURL(responseURL, JSONmessage) {
+	var postOptions = {
+		uri: responseURL,
+		method: 'POST',
+		headers: {
+			'Content-type': 'application/json'
+		},
+		json: JSONmessage
+	}
+	request(postOptions, (error, response, body) => {
+		if (error){
+				// handle errors as you see fit
+		}
+	})
+}
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
@@ -263,33 +308,34 @@ controller.hears('order', ['direct_mention', 'mention', 'direct_message'], funct
 	bubbleTeaShop = message.text.split(" ")[2];
 	if (bubbleTeaShop !== undefined) {
 		if (bubbleTeaShop.length > 0) {
-            let orderTime = moment().add(1, 'hours').toDate();
-            let timeForMessage = moment(orderTime).format('LT');
-            bot.reply(message, `<!channel> We will be ordering from ${bubbleTeaShop}. Put in your order now! Cut off time: ${timeForMessage}`);
-            orderTimeSet(orderTime);
+			let orderTime = moment().add(1, 'hours').toDate();
+			let timeForMessage = moment(orderTime).format('LT');
+
+			orderTimeSet(orderTime);
+
 			fs.readFile('credentials.json', (err, content) => {
 				if (err) return console.log('Error loading client secret file:', err);
 				// Authorize a client with credentials, then call the Google Sheets API.
-				authorize(JSON.parse(content), orderFrom, bubbleTeaShop, timeString);
+				authorize(JSON.parse(content), orderFrom, bubbleTeaShop, timeForMessage);
 
 				bot.api.chat.postMessage({
-					channel: 'DHMKDBGTB',
+					channel: message.channel,
 					as_user: true,
-					text: "Do you want to join the group order?",
+					text: `<!channel> We will be ordering from ${bubbleTeaShop}. Put in your order now! Cut off time: ${timeForMessage}.\nDo you want to join the group order?`,
     			attachments: [{
-							"fallback": "You are unable to choose a game",
-							"callback_id": "wopr_game",
+							"fallback": "You are unable to choose an order",
+							"callback_id": "user_order",
 							"color": "#3AA3E3",
 							"attachment_type": "default",
 							"actions": [
 								{
-										"name": "game",
+										"name": "UserOrder",
 										"text": "Yes",
 										"type": "button",
 										"value": "yes"
 								},
 								{
-										"name": "game",
+										"name": "UserOrder",
 										"text": "No",
 										"type": "button",
 										"value": "no"
