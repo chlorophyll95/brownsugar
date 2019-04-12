@@ -209,6 +209,20 @@ function readBubbleTeaPlaces(auth) {
 	});
 }
 
+function getTopThreeDrinks(auth, bubbleTeaShop) {
+  const sheets = google.sheets({version: 'v4', auth});
+	sheets.spreadsheets.values.get({
+    spreadsheetId: '1MyLFCPcvY6BBgICQ2XjPvaUgyQJqMu_v-5knB4xdBP8',
+    range: bubbleTeaShop + ' Favorite Drinks!B2:C4',
+    majorDimension: 'COLUMNS',
+		valueRenderOption: 'FORMATTED_VALUE',
+		fields: 'values',
+	}, (err, res) => {
+		if (err) return console.log('The API returned an error: ' + err);
+    return res.data.values;
+	});
+}
+
 function orderFrom(auth, bubbleTeaShop, cutOffTime) {
 	const sheets = google.sheets({version: 'v4', auth});
 
