@@ -263,18 +263,10 @@ controller.hears('order', ['direct_mention', 'mention', 'direct_message'], funct
 	bubbleTeaShop = message.text.split(" ")[2];
 	if (bubbleTeaShop !== undefined) {
 		if (bubbleTeaShop.length > 0) {
-			let hours = new Date().getHours() + 1;
-
-			let minutes = new Date().getMinutes();
-			hours = (hours === 24) ? 00 : hours;
-			var timeString = hours + ":" + minutes;
-			var h = (hours % 12) || 12;
-			var ampm = hours < 12 ? "AM" : "PM";
-            timeString = h + ":" + timeString.substr(2, 3) + ampm;
-            console.log(timeString);
-
-            bot.reply(message, "<!channel> We will be ordering from " + bubbleTeaShop + ". Put in your order now! Cut off time: " + timeString);
-            orderTimeSet(moment().add(1, 'hours').toDate());
+            let orderTime = moment().add(1, 'hours').toDate();
+            let timeForMessage = moment(orderTime).format('LT');
+            bot.reply(message, `<!channel> We will be ordering from ${bubbleTeaShop}. Put in your order now! Cut off time: ${timeForMessage}`);
+            orderTimeSet(orderTime);
 			fs.readFile('credentials.json', (err, content) => {
 				if (err) return console.log('Error loading client secret file:', err);
 				// Authorize a client with credentials, then call the Google Sheets API.
